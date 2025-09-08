@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    image: homecollection-api:latest
+    container_name: homecollection-api
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

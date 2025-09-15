@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Literal
 from datetime import datetime, timezone
 from app.dependencies.db import get_db
 from app.utils.ids import new_id

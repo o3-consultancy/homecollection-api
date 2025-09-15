@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from app.dependencies.db import get_db
 from app.utils.ids import new_id
-from typing import List
+from typing import List, Literal
 
 
 router = APIRouter()
@@ -293,3 +293,78 @@ async def list_awaiting_deployment_signups():
             )
         )
     return results
+
+
+# OMS: list-all with filters
+@router.get("/signups/all", response_model=List[SignupListOut])
+async def list_all_signups(
+    status: Literal["pending", "awaiting_deployment", "active", "inactive", "deleted", "any"] = Query("any"),
+    community: str | None = None,
+    limit: int = Query(100, ge=1, le=500),
+):
+    db = get_db()
+    q: dict = {}
+    if status != "any":
+        q["status"] = status
+    if community:
+        q["community"] = community
+    cursor = db.signups.find(q).limit(limit)
+    results: List[SignupListOut] = []
+    async for doc in cursor:
+        results.append(
+            SignupListOut(
+                id=doc["_id"],
+                fullName=doc.get("fullName"),
+                phone=doc.get("phone"),
+                email=doc.get("email"),
+                addressText=doc.get("addressText"),
+                villaNumber=doc.get("villaNumber"),
+                community=doc.get("community"),
+                location=GeoPoint(
+                    latitude=doc["location"]["latitude"],
+                    longitude=doc["location"]["longitude"],
+                ),
+                status=doc.get("status"),
+                createdAt=doc.get("createdAt"),
+            )
+        )
+    return results
+
+
+class SignupStatusUpdateItem(BaseModel):
+    signupId: str
+    status: Literal["pending", "awaiting_deployment", "active", "inactive", "deleted"]
+    reason: str | None = None
+    updatedBy: str | None = None
+
+
+class SignupStatusBatchIn(BaseModel):
+    items: List[SignupStatusUpdateItem]
+
+
+class SignupStatusBatchOut(BaseModel):
+    updated: int
+    skipped: int
+    errors: int
+
+
+@router.patch("/signups/status/batch", response_model=SignupStatusBatchOut)
+async def batch_update_signup_status(payload: SignupStatusBatchIn):
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    updated = 0
+    skipped = 0
+    errors = 0
+    for item in payload.items:
+        try:
+            res = await db.signups.update_one(
+                {"_id": item.signupId},
+                {"$set": {"status": item.status, "updatedAt": now, "statusReason": item.reason, "statusUpdatedBy": item.updatedBy}},
+            )
+            if res.matched_count == 0:
+                skipped += 1
+            else:
+                updated += 1
+        except Exception:
+            errors += 1
+    return SignupStatusBatchOut(updated=updated, skipped=skipped, errors=errors)

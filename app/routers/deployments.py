@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from app.dependencies.db import get_db
 from app.services.swap import perform_swap
 from app.utils.ids import new_id
+from typing import List, Literal
 
 router = APIRouter()
 
@@ -88,3 +89,93 @@ async def perform_deployment(payload: DeploymentPerformIn):
     )
 
     return {"ok": True, "deploymentId": dep_id}
+
+
+class DeploymentAssignIn(BaseModel):
+    householdId: str
+    assignedTo: str
+    notes: str | None = None
+
+
+@router.post("/deployments/assign")
+async def create_deployment_assignment(payload: DeploymentAssignIn):
+    db = get_db()
+    now = datetime.now(timezone.utc).isoformat()
+    # Ensure household exists
+    h = await db.households.find_one({"_id": payload.householdId})
+    if not h:
+        raise HTTPException(status_code=404, detail="Household not found")
+    dep_id = new_id("dep_task")
+    doc = {
+        "_id": dep_id,
+        "type": "deployment_task",
+        "status": "assigned",
+        "assignedTo": payload.assignedTo,
+        "householdId": payload.householdId,
+        "createdAt": now,
+        "notes": payload.notes,
+    }
+    await db.deployments.insert_one(doc)
+    return {"id": dep_id, "status": "assigned"}
+
+
+class DeploymentListOut(BaseModel):
+    id: str
+    type: str
+    status: str | None = None
+    householdId: str | None = None
+    assignedTo: str | None = None
+    performedAt: str | None = None
+    createdAt: str | None = None
+
+
+@router.get("/deployments", response_model=List[DeploymentListOut])
+async def list_deployments(
+    assignedTo: str | None = None,
+    status: Literal["assigned", "in_progress", "completed", "any"] = "any",
+    type: Literal["deployment", "swap", "deployment_task", "any"] = "any",
+    limit: int = 100,
+):
+    db = get_db()
+    q: dict = {}
+    if assignedTo:
+        q["assignedTo"] = assignedTo
+    if status != "any":
+        q["status"] = status
+    if type != "any":
+        q["type"] = type
+    cur = db.deployments.find(q).limit(min(limit, 200))
+    results: List[DeploymentListOut] = []
+    async for d in cur:
+        results.append(DeploymentListOut(
+            id=d["_id"], type=d.get("type"), status=d.get("status"),
+            householdId=d.get("householdId"), assignedTo=d.get("assignedTo"),
+            performedAt=d.get("performedAt"), createdAt=d.get("createdAt"),
+        ))
+    return results
+
+
+class DeploymentAssignUpdateIn(BaseModel):
+    assignedTo: str
+
+
+@router.patch("/deployments/{deployment_id}/assign")
+async def update_deployment_assignment(deployment_id: str, payload: DeploymentAssignUpdateIn):
+    db = get_db()
+    res = await db.deployments.update_one({"_id": deployment_id}, {"$set": {"assignedTo": payload.assignedTo}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    return {"ok": True}
+
+
+class DeploymentStatusUpdateIn(BaseModel):
+    status: Literal["assigned", "in_progress", "completed", "cancelled"]
+
+
+@router.patch("/deployments/{deployment_id}/status")
+async def update_deployment_status(deployment_id: str, payload: DeploymentStatusUpdateIn):
+    db = get_db()
+    res = await db.deployments.update_one({"_id": deployment_id}, {"$set": {"status": payload.status}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+    return {"ok": True}

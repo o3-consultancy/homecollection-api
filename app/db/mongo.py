@@ -84,6 +84,10 @@ class MongoClientWrapper:
             # users: auth
             await self.users.create_index([("username", 1)], unique=True)
 
+            # deployments: task assignment
+            await self.deployments.create_index([("assignedTo", 1), ("performedAt", -1)])
+            await self.deployments.create_index([("type", 1), ("performedAt", -1)])
+
             log.info("Indexes ensured (Mongo driver).")
         except OperationFailure as e:
             # Firestore Mongo API often blocks createIndex -> do not fail startup

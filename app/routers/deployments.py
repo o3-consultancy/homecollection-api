@@ -135,6 +135,8 @@ async def list_deployments(
     status: Literal["assigned", "in_progress", "completed", "any"] = "any",
     type: Literal["deployment", "swap", "deployment_task", "any"] = "any",
     limit: int = 100,
+    sortBy: Literal["performedAt", "createdAt", "type", "status"] = "performedAt",
+    sortDir: Literal["asc", "desc"] = "desc"
 ):
     db = get_db()
     q: dict = {}
@@ -144,7 +146,9 @@ async def list_deployments(
         q["status"] = status
     if type != "any":
         q["type"] = type
-    cur = db.deployments.find(q).limit(min(limit, 200))
+    sort_field = sortBy
+    sort_direction = -1 if sortDir == "desc" else 1
+    cur = db.deployments.find(q).sort(sort_field, sort_direction).limit(min(limit, 200))
     results: List[DeploymentListOut] = []
     async for d in cur:
         results.append(DeploymentListOut(

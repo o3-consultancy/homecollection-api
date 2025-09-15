@@ -100,8 +100,8 @@ Content-Type: application/json
     ```
   - Response: `{ "id": "signup_...", "status": "pending" }`
 
-- GET `{API_BASE_PATH}/signups`
-  - Description: List signups with status in [`pending`, `awaiting_deployment`, `active`]
+- GET `{API_BASE_PATH}/signups?sortBy=createdAt|status|fullName&sortDir=asc|desc`
+  - Description: List signups with status in [`pending`, `awaiting_deployment`, `active`], with sorting
 
 - POST `{API_BASE_PATH}/signups/awaiting-deployment/batch`
   - Description: For given `signupIds`, create households and set status to `awaiting_deployment`
@@ -135,8 +135,8 @@ Content-Type: application/json
     { "signupId": "signup_...", "householdId": "hh_...", "deploymentId": "dep_...", "status": "active" }
     ```
 
-- GET `{API_BASE_PATH}/signups/all?status=any|pending|awaiting_deployment|active|inactive|deleted&community=...&limit=...`
-  - OMS: List signups across any status with filters
+- GET `{API_BASE_PATH}/signups/all?status=any|pending|awaiting_deployment|active|inactive|deleted&community=...&limit=...&sortBy=createdAt|status|fullName&sortDir=asc|desc`
+  - OMS: List signups across any status with filters and sorting
 
 - PATCH `{API_BASE_PATH}/signups/status/batch`
   - OMS: Batch update signup statuses (e.g., `inactive`, `deleted`, `awaiting_deployment`)
@@ -160,8 +160,8 @@ Content-Type: application/json
 - GET `{API_BASE_PATH}/households/{householdId}`
   - Description: Get a household
 
-- GET `{API_BASE_PATH}/households?community=...&status=...&hasContainer=true|false&limit=...`
-  - Description: List households with filters
+- GET `{API_BASE_PATH}/households?community=...&status=...&hasContainer=true|false&limit=...&sortBy=createdAt|villaNumber|community&sortDir=asc|desc`
+  - Description: List households with filters and sorting
 
 - GET `{API_BASE_PATH}/households/{householdId}/history`
   - Description: Timeline of assignments and deployments/swaps and total collected volume
@@ -188,8 +188,20 @@ Content-Type: application/json
 - GET `{API_BASE_PATH}/containers/{containerId}`
   - Description: Get container
 
-- GET `{API_BASE_PATH}/containers?unassigned=true|false&limit=50`
-  - Description: List containers; filter by unassigned
+- GET `{API_BASE_PATH}/containers?unassigned=true|false&limit=50&sortBy=createdAt|serial|assignedHouseholdId&sortDir=asc|desc`
+  - Description: List containers; filter by unassigned, with sorting
+
+- GET `{API_BASE_PATH}/containers/{containerId}/history`
+  - Description: Get container timeline (assignments, deployments, collections)
+  - Response:
+    ```json
+    {
+      "container": { "id": "container_1", "serial": "C-0001", "currentHouseholdId": "hh_1", "state": "active" },
+      "assignments": [{ "householdId": "hh_1", "assignedAt": "...", "unassignedAt": null, "assignedBy": "user_1", "assignmentReason": "initial_deployment" }],
+      "deployments": [{ "type": "deployment", "performedAt": "...", "performedBy": "user_1", "householdId": "hh_1", "installedContainerId": "container_1" }],
+      "collections": [{ "requestId": "req_1", "householdId": "hh_1", "requestedAt": "...", "status": "completed", "metrics": { "volumeL": 20.5 } }]
+    }
+    ```
 
 ---
 
@@ -210,8 +222,8 @@ Content-Type: application/json
     ```
   - Response: `{ "id": "dep_task_...", "status": "assigned" }`
 
-- GET `{API_BASE_PATH}/deployments?assignedTo=...&status=assigned|in_progress|completed|any&type=deployment|swap|deployment_task|any&limit=...`
-  - Description: List deployments and tasks
+- GET `{API_BASE_PATH}/deployments?assignedTo=...&status=assigned|in_progress|completed|any&type=deployment|swap|deployment_task|any&limit=...&sortBy=performedAt|createdAt|type|status&sortDir=asc|desc`
+  - Description: List deployments and tasks with sorting
 
 - PATCH `{API_BASE_PATH}/deployments/{id}/assign`
   - Description: Reassign a deployment task
@@ -247,8 +259,8 @@ Content-Type: application/json
     ```
   - Response: `{ "id": "req_...", "status": "requested" }`
 
-- GET `{API_BASE_PATH}/collection-requests?status=requested|completed|any&householdId=...&assignedTo=...&limit=...`
-  - Description: List collection requests with filters
+- GET `{API_BASE_PATH}/collection-requests?status=requested|completed|any&householdId=...&assignedTo=...&limit=...&sortBy=requestedAt|status|householdId&sortDir=asc|desc`
+  - Description: List collection requests with filters and sorting
 
 - GET `{API_BASE_PATH}/collection-requests/check-pending?containerId=...&householdId=...`
   - Description: Check if a pending request exists for a given household+container
@@ -269,6 +281,28 @@ Content-Type: application/json
     { "householdId": "hh_1", "containerId": "container_1", "requestedBy": "ops_1", "geoAtRequest": { "latitude": 25.2, "longitude": 55.3 } }
     ```
   - Response: `{ "id": "req_...", "status": "requested" }`
+
+---
+
+## Collections Summary – OMS
+- GET `{API_BASE_PATH}/collections?status=requested|completed|any&dateFrom=...&dateTo=...&householdId=...&assignedTo=...&limit=...&sortBy=requestedAt|status|householdId&sortDir=asc|desc`
+  - Description: Collections summary with volume/weight metrics, date filtering, and sorting
+  - Response:
+    ```json
+    [
+      {
+        "id": "req_1",
+        "householdId": "hh_1",
+        "containerId": "container_1",
+        "requestedAt": "2024-01-15T10:30:00Z",
+        "status": "completed",
+        "volumeL": 20.5,
+        "weightKg": 18.1,
+        "performedBy": "user_alex",
+        "assignedTo": "user_alex"
+      }
+    ]
+    ```
 
 ---
 

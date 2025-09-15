@@ -70,6 +70,8 @@ async def list_households(
     status: str | None = None,
     hasContainer: bool | None = None,
     limit: int = Query(50, ge=1, le=200),
+    sortBy: Literal["createdAt", "villaNumber", "community"] = "createdAt",
+    sortDir: Literal["asc", "desc"] = "desc"
 ):
     db = get_db()
     q: dict = {}
@@ -82,7 +84,9 @@ async def list_households(
     if hasContainer is False:
         q["currentContainerId"] = None
 
-    cur = db.households.find(q).limit(limit)
+    sort_field = sortBy
+    sort_direction = -1 if sortDir == "desc" else 1
+    cur = db.households.find(q).sort(sort_field, sort_direction).limit(limit)
     results: List[HouseholdListOut] = []
     async for d in cur:
         results.append(HouseholdListOut(

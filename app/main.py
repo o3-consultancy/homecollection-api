@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.middleware.auth import api_key_auth_middleware
 from app.dependencies.db import get_db
-from app.routers import health, qr, signups, collection_requests, deployments, containers, households, users
+from app.routers import health, qr, signups, collection_requests, deployments, containers, households, users, collections
 
 app = FastAPI(
     title="HomeCollection API",
@@ -45,6 +45,8 @@ app.include_router(households.router,
                    prefix=settings.API_BASE_PATH, tags=["households"])
 app.include_router(users.router,
                    prefix=settings.API_BASE_PATH, tags=["users", "auth"])
+app.include_router(collections.router,
+                   prefix=settings.API_BASE_PATH, tags=["collections"])
 
 # Background worker for outbox (optional)
 _stop_event: asyncio.Event | None = None

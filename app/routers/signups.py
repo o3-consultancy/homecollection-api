@@ -68,10 +68,15 @@ class SignupListOut(BaseModel):
 
 
 @router.get("/signups", response_model=List[SignupListOut])
-async def list_active_signups():
+async def list_active_signups(
+    sortBy: Literal["createdAt", "status", "fullName"] = "createdAt",
+    sortDir: Literal["asc", "desc"] = "desc"
+):
     db = get_db()
     # Query all signups where status is not "inactive" or "deleted"
-    cursor = db.signups.find({"status": {"$in": ["pending", "awaiting_deployment", "active"]}})
+    sort_field = sortBy
+    sort_direction = -1 if sortDir == "desc" else 1
+    cursor = db.signups.find({"status": {"$in": ["pending", "awaiting_deployment", "active"]}}).sort(sort_field, sort_direction)
     results = []
     async for doc in cursor:
         results.append(
@@ -301,6 +306,8 @@ async def list_all_signups(
     status: Literal["pending", "awaiting_deployment", "active", "inactive", "deleted", "any"] = Query("any"),
     community: str | None = None,
     limit: int = Query(100, ge=1, le=500),
+    sortBy: Literal["createdAt", "status", "fullName"] = "createdAt",
+    sortDir: Literal["asc", "desc"] = "desc"
 ):
     db = get_db()
     q: dict = {}
@@ -308,7 +315,9 @@ async def list_all_signups(
         q["status"] = status
     if community:
         q["community"] = community
-    cursor = db.signups.find(q).limit(limit)
+    sort_field = sortBy
+    sort_direction = -1 if sortDir == "desc" else 1
+    cursor = db.signups.find(q).sort(sort_field, sort_direction).limit(limit)
     results: List[SignupListOut] = []
     async for doc in cursor:
         results.append(

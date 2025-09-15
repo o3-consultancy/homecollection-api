@@ -11,6 +11,7 @@ PUBLIC_PATHS = (
     "/qr/sign",
     "/qr/verify",
     "/auth/login",
+    "/favicon.ico",
     "/openapi.json",
     "/docs",
     "/redoc",
@@ -35,4 +36,4 @@ async def api_key_auth_middleware(request: Request, call_next):
     if not expected or key == expected:
         return await call_next(request)
 
-    raise HTTPException(status_code=401, detail="Unauthorized")
+    return Response(status_code=401)

@@ -71,6 +71,8 @@ async def list_collection_requests(
     householdId: str | None = None,
     assignedTo: str | None = None,
     limit: int = 50,
+    sortBy: Literal["requestedAt", "status", "householdId"] = "requestedAt",
+    sortDir: Literal["asc", "desc"] = "desc"
 ):
     db = get_db()
     q = {}
@@ -80,7 +82,9 @@ async def list_collection_requests(
         q["householdId"] = householdId
     if assignedTo:
         q["assignedTo"] = assignedTo
-    cur = db.collection_requests.find(q).limit(min(limit, 200))
+    sort_field = sortBy
+    sort_direction = -1 if sortDir == "desc" else 1
+    cur = db.collection_requests.find(q).sort(sort_field, sort_direction).limit(min(limit, 200))
     results: List[RequestListOut] = []
     async for d in cur:
         results.append(RequestListOut(

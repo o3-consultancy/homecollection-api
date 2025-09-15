@@ -44,6 +44,10 @@ class MongoClientWrapper:
     def container_assignments(self):
         return self.db["container_assignments"]
 
+    @property
+    def users(self):
+        return self.db["users"]
+
     # --- Utilities ---
 
     async def ping(self):
@@ -76,6 +80,9 @@ class MongoClientWrapper:
             # container_assignments: audit trails
             await self.container_assignments.create_index([("householdId", 1), ("assignedAt", -1)])
             await self.container_assignments.create_index([("containerId", 1), ("assignedAt", -1)])
+
+            # users: auth
+            await self.users.create_index([("username", 1)], unique=True)
 
             log.info("Indexes ensured (Mongo driver).")
         except OperationFailure as e:

@@ -10,6 +10,7 @@ PUBLIC_PATHS = (
     "/health",
     "/qr/sign",
     "/qr/verify",
+    "/auth/login",
     "/openapi.json",
     "/docs",
     "/redoc",
